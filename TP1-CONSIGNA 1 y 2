@@ -1,0 +1,101 @@
+% TRABAJO PRACTICO N 1
+% PROFESOR: JULIAN PUCHETA
+% ALUMNO: HERMAN RAYMUNDO SALVATIERRA
+% CASO DE ESTUDIO 1
+clear all ; close all ;  clc
+% SISTEMA DE 2 VARIABLES
+% EJERCICIO 1 y 2
+% Asigno los valores a los componentes:
+R = 4.7e3;
+L = 10e-6;
+C = 100e-9;
+
+%Con estos valores de componentes planteo las matrices:
+A = [-R/L  -1/L  ;  1/C   0];  % MATRIZ DE ESTADOS
+B = [ 1/L  ;  0];     % MATRIZ DE ENTRADA
+C = [ R 0]        % MATRIZ DE SALIDA 
+D =  0 ;      % MATRIZ DE TRANSMISION DIRECTA
+
+% Obtener simulaciones que permitan estudiar la dinamica del sistema, con
+% una entrada de tension escalon de 12V que cada 1mseg cambia de signo
+
+%Primero quiero obtener la funcion de transferencia utilizando las
+%matrices A B C D 
+[num,den] = ss2tf(A,B,C,D) % State Space to transfer function
+
+%Teniendo el numerador y el denominador formo mi funcion de transferencia:
+G = tf(num,den)
+
+%Para poder analizar la dinámica del sistema necesito calcular el tiempo
+%que dure la simulacion y el tamaño de paso, y eso lo puedo aproximar
+%conociendo los autovalores de la matriz A 
+polos = roots(den) % Calculo los 2 polos del denominador 
+p1 = polos(1)
+p2 = polos(2)
+
+% Para estimar el tamaño de paso que permita observar la dinamica más 
+%rapida utilizo el polo más grande para la cual se llega a un 95%:
+tp=(log(0.95)/polos(1))
+%El tamaño de páso  debe ser tan pequeño como 10 veces menor a este valor
+%obtenido pero como obtuve un numero demasiado pequeño y no quiero aumentar
+%el costo computacional voy a estimar un tamaño de paso 10 veces mayor al
+%calculado:
+tp=1e-9
+
+%Para estimar el tiempo total de la simulación utilizaré el polo de menor
+%tamaño, que me permita ver la dinamica mas lenta:
+tt=(log(0.05)/polos(2))
+
+%Por cuestiones de seguridad es aceptable tomar un tiempo total de la
+%simulacion que sea 5 veces mayor al que calculé, obteniendo:
+tt=0.007
+
+%Tendiendo en cuenta que la entrada de 12V varia cada 1mseg y mi simulacion
+%completa solo tiene duracion de 7mseg, entonces es probable que no se
+%alcance a establecer el valor final
+%________________________________________________________________________
+%Para conocer la cantidad de puntos que tendrá mi simulacion, divido el 
+%tiempo total de simulacion entre lo que dura cada tamaño de paso y lo 
+%denomino puntos:
+puntos = (tt)/(tp)
+
+%Sabiendo la cantidad de puntos necesarios construyo el vector de tiempo t:
+t = linspace (0 , tt , puntos ) ;
+%el vector t comienza en 0 y llega hasta tt , tiene aprox 7e6 puntos
+
+%Ahora creo un vector u con 7e6 puntos donde todos los elementos son cero 
+u = linspace( 0 , 0 , puntos);
+vin=12; %defino el valor de la tension de entrada
+
+%Debo establecer el punto de operacion de la corriente y la tension:
+I1(1)=0;
+Vc(1)=0;
+x=[I1(1)  Vc(1)]'; %aqui defino el punto de operacion
+y(1)=0;
+Xop=[0  0]';
+ii=0;
+
+for i=1:puntos-1
+    ii=ii+tp;
+    if(ii>=1e-3)
+        ii=0;
+        vin=vin*-1;
+    end
+    u(i)=vin;
+    
+    %Ahora planteo las variables de estado del sistema lineal
+    xp=A*(x-Xop)+B*u(i);
+    x=x+xp*tp;
+    Y=C*x;
+    y(i+1)=Y(1);
+    I1(i+1)=x(1);
+    Vc(i+1)=x(2);
+end
+%Finalmente grafico la corriente I1 , la tension del C Vc y la tension Vin
+figure(1)
+subplot(3,1,1);
+plot(t,u,'green'); title('Tension de Entrada , u_t'); grid on
+subplot(3,1,2);
+plot(t,Vc,'blue'); title('Tension en el capacitor , Vc_t'); grid on
+subplot(3,1,3); 
+plot(t,I1,'red'); title('Corriente , i_t') ; grid on;
