@@ -44,17 +44,20 @@ plot( t , u , 'g'); title('Tension de entrada , u_t'); grid on
 
 % Aplico metodo de Chen
 
-% Elijo 3 puntos en la grafica de la respuesta al escalon
-t1_v = valores(103,1); y1_v = valores(103,2);
-t2_v = valores(105,1); y2_v = valores(105,2);
-t3_v = valores(107,1); y3_v = valores(107,2);
+% Elijo 3 puntos equidistantes (en tiempo) en la grafica de la respuesta al
+% escalon del votaje 
+t1_v = valores(103,1);   y1_v = valores(103,2);
+t2_v = valores(105,1);   y2_v = valores(105,2);
+t3_v = valores(107,1);   y3_v = valores(107,2);
 
 figure(1)
 plot([t1_v  t2_v  t3_v],[y1_v  y2_v  y3_v],'*'); hold on;
 
-t1_i = valores(111,1); y1_i = valores(111,3);
-t2_i = valores(131,1); y2_i = valores(131,3);
-t3_i = valores(151,1); y3_i = valores(151,3);
+% Elijo 3 puntos equidistantes (en tiempo) en la grafica de la respuesta al
+% escalon de la corriente
+t1_i = valores(111,1);  y1_i = valores(111,3);
+t2_i = valores(131,1);  y2_i = valores(131,3);
+t3_i = valores(151,1);  y3_i = valores(151,3);
 
 figure(2)
 plot([t1_i  t2_i  t3_i],[y1_i  y2_i  y3_i],'*'); hold on;
@@ -65,86 +68,31 @@ K_v = valores(500,3)/12;
 %Ganancia normalizada a partir de corriente final en el grafico
 K_i=valores(500,2)/12;
 
-%Tengo que dividir la altura de los voltajes por 12 para normalizar a la
-%entrada que es un escalon unitario
-y1_v = y1_v/12;   y2_v = y2_v/12;   y3_v = y3_v/12;
+%Aplico metodo de Chen para estimar la funcion de transferencia del voltaje
+%Comienzo calculando k1 k2 k3
+k1= (y1_v/K_v)-1;   k2= (y2_v/K_v)-1;   k3= (y3_v/K_v)-1;
 
-%Tengo que dividir la altura de las corrientes por 12 para normalizar a la
-%entrada que es un escalon unitario
-y1_i = y1_i/12;   y2_i = y2_i/12;   y3_i = y3_i/12;
+%Calculo el parametro b:
+b=((4)*(k1^3)*(k3))-((3)*(k1^2)*(k2^2))-((4)*(k2^3))+(k3^2)+((6)*(k1)*(k2)*(k3));
 
-%Defino las 3 K's correspondientes a las 3 ecuaciones para los puntos:
-k1_v = (y1_v/K_v)-1     ;    k1_i = (y1_i/K_i)-1;
-k2_v = (y2_v/K_v)-1     ;    k2_i = (y2_i/K_i)-1;
-k3_v = (y3_v/K_v)-1     ;    k3_i = (y3_i/K_i)-1;
+%Calculo de Beta:
+Beta=((2*(k3^3))+(3*k1*k2)+(k3)-(sqrt(b)))/(sqrt(b));
 
-%Luego necesito despejar de las ecuaciones a alfa1 ,  alfa2 y beta:
-b_v     =  4*(k1_v^3)*k3_v-3*(k1_v^2)*(k2_v^2)-4*(k2_v^3)+(k3_v^2)+6*k1_v*k2_v*k3_v; %ecuacion 23 de Chen
-alfa1_v = (k1_v*k2_v+k3_v-sqrt(b_v)) / (2*(k1_v^2+k2_v)); %ecuacion 21 de Chen
-alfa2_v = (k1_v*k2_v+k3_v+sqrt(b_v)) / (2*(k1_v^2+k2_v)); %ecuacion 22 de Chen
-beta_v  = (k1_v+alfa2_v)/(alfa1_v-alfa2_v); %ecuacion 20 de Chen
+%Calculo alfa1:
+alfa1=((k1*k2)+(k3)-(sqrt(b)))/(2*((k1^2)+(k2)));
 
+%Calculo alfa2:
+alfa2=((k1*k2)+(k3)+(sqrt(b)))/(2*((k1^2)+(k2)));
 
-b_i=(4*k1_i^3*k3_i)-(3*k1_i^2*k2_i^2)-(4*k2_i^3)+(k3_i^2)+(6*k1_i*k2_i*k3_i); %ecuacion 23 de Chen
-alfa1_i=((k1_i*k2_i)+k3_i-sqrt(b_i))/(2*(k1_i^2+k2_i)); %ecuacion 21 de Chen
-alfa2_i=((k1_i*k2_i)+k3_i+sqrt(b_i))/(2*(k1_i^2+k2_i)); %ecuacion 22 de Chen
-beta_i=(k1_i+alfa2_i)/(alfa1_i-alfa2_i); %ecuacion 20 de Chen
+%Calculo la constante de tiempo T1:
+T1=(-t1_v)/(log(alfa1));
 
+%Calculo la constante de tiempo T2:
+T2=(-t1_v)/(log(alfa2));
 
-%Luego reemplazo la EC 21 y EC 24 en EC 19 para obtener el cero y los 2 polos
-T1_v= -(t1_v-0.01)/log(alfa1_v);           T1_i= -(t1_i-0.01)/log(alfa1_i);
-T2_v= -(t1_v-0.01)/log(alfa2_v);           T2_i= -(t1_i-0.01)/log(alfa2_i);
-T3_v=(beta_v*(T1_v-T2_v))+T1_v;            T3_i=(beta_i*(T1_i-T2_i))+T1_i;
+%Calculo la constante de tiempo T3:
+T3=(Beta*(T1-T2))+(T1);
 
-
-%Planteo la nueva funcion de transferencia de tensión
-%Multiplicaré los parentesis: (T1_v*s + 1) y (T2_v*s + 1)
-%Para asi obtener el polinomio completo del denominador
-G_v=tf(K_v*[T3_v 1],conv([T1_v 1],[T2_v 1]));
-
-%Planteo la nueva funcion de transferencia de corriente
-%Multiplicaré los parentesis: (T1_i*s + 1) y (T2_i*s + 1)
-%Para asi obtener el polinomio completo del denominador
-G_i=tf(K_i*[T3_i 1],conv([T1_i 1],[T2_i 1]));
-
-
-%Se compara la Tensión y la corriente
-
-[y_G_v,t_G_v]=lsim(G_v,u,t);
-
-figure(4)
-plot(tt,Vc, 'k' ); grid on; hold on;
-plot(t_G_v,y_G_v,'r'); title('G_v obtenida con método de Chen comparada con Voltajes de la tabla excel');
-legend({'V_t de excel','G_v obtenida con método de Chen'},'Location','southeast')
-
-[y_G_i,t_G_i]=lsim(G_i,u,t);
-
-figure(5)
-plot(tt,I, 'k' ); grid on; hold on;
-plot(t_G_i,y_G_i,'m'); title('G_i obtenida con método de Chen comparada con corrientes de la table excel');
-legend({'I_t de excel','G_i obtenida con método de Chen'},'Location','southeast')
-
-%A la funcion de transferencia, le extraigo el segundo coeficiente del
-%polinomio numerador y ese será el capacitor
-Capacitor = G_i.num{1}(2)
-
-%Ahora con la capacitancia conocida puedo calcular la inductancia L
-L=(G_i.den{1}(1))/Capacitor
-
-%Por ultimo calculo la resistencia R
-R=(G_i.den{1}(2))/Capacitor
-
-
-%Matrices
-A=[-R/L -1/L; 1/Capacitor 0];
-B=[1/L; 0];
-C=[1 0];
-D=0;
-%Definicion de la ecuación de estado y de salida (salida de corriente)
-G1=ss(A,B,C,D);
-[yout,yt]=lsim(G1,(u),t);
-figure(6)
-plot(yt,yout,'b');grid on; hold on;
-plot(valores(:,1),valores(:,2),'r'); title('Comparación de corriente');
-legend({'i(t) estimada con valores R-L-C calculados','i(t) de excel'},'Location','southeast')
-
+%Teniendo todos los parametros planteo la funcion de transferencia
+%calculada con el metodo de Chen:
+G_v=tf(K_v*[T3 1],conv([T1 1],[T2 1]))
