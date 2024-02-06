@@ -47,11 +47,11 @@ plot( t , u , 'g'); title('Tension de entrada , u_t'); grid on
 
 % Elijo 3 puntos equidistantes (en tiempo) en la grafica de la respuesta al
 % escalon del voltaje   (que es la columna 3 del excel):
-t1_v = valores(111,1);  y1_v = valores(111,3);
-t2_v = valores(131,1);  y2_v = valores(131,3);
-t3_v = valores(151,1);  y3_v = valores(151,3);
+t1_v = valores(112,1);  y1_v = valores(112,3);
+t2_v = valores(123,1);  y2_v = valores(123,3);
+t3_v = valores(134,1);  y3_v = valores(134,3);
 %Además, elijo un cuarto punto para normalizar la ganancia
-t4_v = valores(499,1);  y4_v = valores(499,3);
+t4_v = valores(501,1);  y4_v = valores(501,3);
 
 figure(1)
 plot([t1_v  t2_v  t3_v  t4_v],[y1_v  y2_v  y3_v  y4_v],'*'); hold on;
@@ -62,13 +62,19 @@ t1_i = valores(103,1);    y1_i = valores(103,2);
 t2_i = valores(105,1);    y2_i = valores(105,2);
 t3_i = valores(107,1);    y3_i = valores(107,2);
 %Además, elijo un cuarto punto para normalizar la ganancia
-t4_i = valores(499,1);    y4_i = valores(499,2);
+t4_i = valores(500,1);    y4_i = valores(500,2);
 
 figure(2)
 plot([t1_i  t2_i  t3_i  t4_i],[y1_i  y2_i  y3_i  y4_i],'*'); hold on;
 
 %Ganancia normalizada a partir de voltaje final en el grafico de voltaje
-K_v = 12;
+%Recordar que el metodo de chen es para una respuesta al escalon UNITARIO y
+%por eso debo normalizar a uno (divido valor final entre el valor de la entrada)
+K_v = valores(500,3)/12;
+
+%Necesito normalizar la altura de todos los puntos elegidos antes de
+%usarlos en el metodo de chen que supone una entrada escalon UNITARIO
+y1_v=y1_v/12; y2_v=y2_v/12; y3_v=y3_v/12;
 
 %Ganancia normalizada a partir de corriente final en el grafico de corrient
 %K_i= y4_i/12
@@ -83,7 +89,8 @@ k3= (y3_v/K_v)-1 ;
 b=((4)*(k1^3)*(k3))-((3)*(k1^2)*(k2^2))-((4)*(k2^3))+(k3^2)+((6)*(k1)*(k2)*(k3));
 
 %Calculo de Beta:
-Beta=((2*(k3^3))+(3*k1*k2)+(k3)-(sqrt(b)))/(sqrt(b));
+%Beta=((2*(k3^3))+(3*k1*k2)+(k3)-(sqrt(b)))/(sqrt(b));
+
 
 %Calculo alfa1:
 alfa1=((k1*k2)+(k3)-(sqrt(b)))/(2*((k1^2)+(k2)));
@@ -91,15 +98,65 @@ alfa1=((k1*k2)+(k3)-(sqrt(b)))/(2*((k1^2)+(k2)));
 %Calculo alfa2:
 alfa2=((k1*k2)+(k3)+(sqrt(b)))/(2*((k1^2)+(k2)));
 
+Beta=(k1+alfa2)/(alfa1-alfa2);
+
+%Debo acordarme de restarle a T1 el tiempo muerto:
+%t1_v = t1_v - 0.01
+
 %Calculo la constante de tiempo T1:
-T1=(-t1_v)/(log(alfa1))
+T1=-(t1_v-0.01)/(log(alfa1))
 
 %Calculo la constante de tiempo T2:
-T2=(-t1_v)/(log(alfa2))
+T2=-(t1_v-0.01)/(log(alfa2))
 
 %Calculo la constante de tiempo T3:
 T3=(Beta*(T1-T2))+(T1)
 
 %Teniendo todos los parametros planteo la funcion de transferencia
 %calculada con el metodo de Chen:
-G_v=tf(K_v*[T3  1],conv([T1  1],[T2  1]))
+G_v=tf(K_v*[T3 1],conv([T1  1],[T2  1]))
+
+[y_G_v,t_G_v] = lsim(G_v,u,t); % A G_v le aplico la entrada u en el tiempo
+% t y sus coordenadas las guardo en 2 vectores que despues los puedo plotear
+
+figure(4)
+
+plot(tt,Vc, 'b'); title('Voltaje en el capacitor , V_t'); grid on; hold on;
+plot(t_G_v,y_G_v,'k'); title('G_v obtenida con metodo de Chen vs Tensiones de tabla');
+
+%Obtengo una funcion de transferencia que tiene un cero positivo pero muy
+%pequeño (despreciable) y que ademas cuando lo comparo con la funcion de
+%transferencia verdadera (original) son practicamente identicas, entonces
+%la aproximacion la puedo considerar aceptable
+
+%Ejercicio 4
+
+R = 261;
+L = 117e-3;
+C = 18.5e-6;
+
+
+
+%Con estos valores de componentes planteo las matrices:
+A = [-R/L  -1/L  ;  1/C   0];  % MATRIZ DE ESTADOS
+B = [ 1/L  ;  0];     % MATRIZ DE ENTRADA
+C = [ 1 0]        % MATRIZ DE SALIDA aca le designo 1 porque solo estoy diciendo cual sera la salida 
+D =  0 ;      % MATRIZ DE TRANSMISION DIRECTA
+
+%Con estos valores de R L C (que son mi espacio de estados) quiero formar
+%mi funcion de transferencia que llamaré F
+
+F = ss(A,B,C,D)
+[num,den] = ss2tf(A,B,C,D)
+tf(num,den)
+
+%Voy a preparar un vector con valores de x e y para simular mi funcion de
+%transferencia creada con los valores R L C calculados
+[yout,yt]=lsim(F,u,t);
+
+%Ahora voy a comparar la respuesta al escalon de la corriente de mi funcion
+%de transferencia calculada (con los valores R L C encontrados) vs 
+%la Respuesta de datos de tabla excel dada por el profesor 
+figure(5)
+plot(tt,I,'r');  grid on; hold on;
+plot(yt,yout,'b'); title('Validación de valores R L C '); grid on; hold on;
