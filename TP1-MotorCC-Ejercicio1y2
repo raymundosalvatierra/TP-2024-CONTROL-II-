@@ -1,0 +1,101 @@
+% TRABAJO PRACTICO N 1
+% PROFESOR: JULIAN PUCHETA
+% ALUMNO: HERMAN RAYMUNDO SALVATIERRA
+
+% CASO DE ESTUDIO 2
+
+% SISTEMA DE 3 VARIABLES DE ESTADO
+
+% EJERCICIO 1: CALCULO DEL TORQUE MAXIMO 
+% EJERCICIO 2: HACER SIMULACIONES DE 5 SEG PARA ESTABLECER LA CORRIENTE Y ASI DIMENSIONAR EL MOTOR 
+
+%PARA REALIZAR ESTA SIMULACION ME BASO EN EL CODIGO PROPORCIONADO POR EL
+%PROFESOR EN LA FILMINA DE LA CLASE 1 DONDE SE ESTUDIA JUSTAMENTE EL CASO
+%DEL MOTOR
+
+%ASIGNO LOS VALORES A LOS PARAMETROS:
+clear all ; close all ;  clc
+%Defino variables para preparar mi simulacion
+X=-[0; 0 ;0 ;0];
+ii=0;
+t_etapa=1e-7;
+wRef=2;
+tF=5;
+
+%Constantes del PID
+%Kp=0;Ki=0;Kd=0;color_='r';
+u=12;
+Ts=t_etapa;
+%A1=((2*Kp*Ts)+(Ki*(Ts^2))+(2*Kd))/(2*Ts);
+%B1=(-2*Kp*Ts+Ki*(Ts^2)-4*Kd)/(2*Ts);
+%C1=Kd/Ts;
+%e=zeros(tF/t_etapa,1);
+
+for t=0:t_etapa:tF
+ii=ii+1;k=ii+2;
+X=modmotor(t_etapa, X, u);
+
+%e(k)=wRef-X(1); %ERROR
+%u=u+A1*e(k)+B1*e(k-1)+C1*e(k-2); %PID
+x1(ii)=X(1);%Omega
+x2(ii)=X(2);%wp
+x3(ii)=X(3);%ia
+x4(ii)=X(4);%tita
+acc(ii)=u;
+end
+t=0:t_etapa:tF;
+
+subplot(4,1,1);hold on;
+plot(t,x1,'g');title('\omega');
+
+subplot(4,1,2);hold on;
+plot(t,x4,'r');title('\theta');
+
+subplot(4,1,3);hold on;
+plot(t,x3,'b');title('Corriente');
+
+subplot(4,1,4);hold on;
+plot(t,acc,'k');title('Tension de entrada');
+
+xlabel('Tiempo [Seg.]');
+
+
+
+function [X]=modmotor(t_etapa, xant, accion)
+Laa=366e-6; J=5e-9;Ra=55.6;B=0;Ki=6.49e-3;Km=6.53e-3;
+Va=accion;
+h=1e-7;
+%Empiezo con TL= 1
+%tita deberia estar en valores positivos y voy disminuyendo hasta encontrar
+%un valor de TL que produzca una velocidad angular omega que sea positiva y 
+%muy pequeña,y una corriente pequeña (razonable) a un motor que se alimenta
+%con 12V (pienso que podria ser el cooler de una computadora)
+%TL=1;
+%TL=0.1;
+%TL=0.01;
+%TL=0.001;
+%TL=0.0001;
+%TL=0.00001;
+%TL=0.0000022;
+%TL=0.00000215;
+%TL=0.000002155;
+TL = 0.00002127;
+%Este es el valor de torque elegido porque viendo el w observo que apenas
+%se mueve, se establece en una velocidad de 0.75 radianes/seg
+%Notar que la corriente es de 216 miliAmp y viene establecido desde muchos
+%otros valores de TL probados previamente
+omega= xant(1);
+wp= xant(2);
+ia=xant(3);
+tita=xant(4);
+for ii=1:t_etapa/h
+wpp =(-wp*(Ra*J+Laa*B)-omega*(Ra*B+Ki*Km)+Va*Ki)/(J*Laa);
+iap=((-Ra*ia)-(Km*omega)+(Va))/Laa;
+wp=wp+h*wpp;
+wp=wp-(1/J)*TL;
+ia=ia+(iap*h);
+omega = omega + h*wp;
+tita=tita+(h*omega);
+end
+X=[omega,wp,ia,tita];
+end
