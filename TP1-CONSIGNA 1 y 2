@@ -70,9 +70,15 @@ vin=12; %defino el valor de la tension de entrada
 %Debo establecer el punto de operacion de la corriente y la tension:
 I1(1)=0;
 Vc(1)=0;
-x=[I1(1)  Vc(1)]'; %aqui defino el punto de operacion Incorrecto. Acá defines las condiciones iniciales.
+%<<<<<<< Julianpucheta-patch-1
+%x=[I1(1)  Vc(1)]'; %aqui defino el punto de operacion Incorrecto. Acá defines las condiciones iniciales.
+%y(1)=0;
+%Xop=[0  0]'; %Éste es el punto de operación, que en el caso del RLC, es el origen.
+%=======
+x=[I1(1)  Vc(1)]'; %aqui defino las condiciones inciales 
 y(1)=0;
-Xop=[0  0]'; %Éste es el punto de operación, que en el caso del RLC, es el origen.
+Xop=[0  0]'; % aca defino el punto de operacion que en este caso es el origen
+%>>>>>>> main
 ii=0;
 
 for i=1:puntos-1

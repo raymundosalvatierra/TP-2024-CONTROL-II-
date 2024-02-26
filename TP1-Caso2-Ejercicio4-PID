@@ -1,0 +1,89 @@
+% TRABAJO PRACTICO N 1
+% PROFESOR: JULIAN PUCHETA
+% ALUMNO: HERMAN RAYMUNDO SALVATIERRA
+% CASO DE ESTUDIO 2
+clear all ; close all ;  clc
+% SISTEMA DE 3 VARIABLES
+% Ejercicio 4
+%Implementar un PID en tiempo discreto para que el ángulo 
+%del motor permanezca en una referencia de 1 radián 
+%(sugerencia: partir de K_P=0,1  ;  K_i=0,01  ;  K_D=5 )
+
+%ASIGNO LOS VALORES A LOS PARAMETROS:
+clear all ; close all ;  clc
+%Defino variables para preparar mi simulacion
+X=-[0; 0 ;0 ;0];
+ii=0;
+t_etapa=1e-7;
+wRef=1;
+tF=7; % tiempo de la simulacion
+
+%Constantes del PID
+Kp=0.09 ; Ki=0.8 ; Kd=0.0000001 ; color_='r';
+u=12;
+Ts=t_etapa;
+A1=((2*Kp*Ts)+(Ki*(Ts^2))+(2*Kd))/(2*Ts);
+B1=(-2*Kp*Ts+Ki*(Ts^2)-4*Kd)/(2*Ts);
+C1=Kd/Ts;
+e=zeros(tF/t_etapa,1);
+
+for t=0:t_etapa:tF
+ii=ii+1;k=ii+2;
+X=modmotor(t_etapa, X, u);
+
+e(k)=wRef-X(4); % ERROR = wRef - tita
+u=u+A1*e(k)+B1*e(k-1)+C1*e(k-2); %Accion de control del PID
+
+%if u>12 %limito accion de control a +-12
+%u=12;
+%end
+%if u<-12
+%u=-12;
+%end
+x1(ii)=X(1);%Omega
+x2(ii)=X(2);%wp
+x3(ii)=X(3);%ia
+x4(ii)=X(4);%tita
+acc(ii)=u;
+end
+t=0:t_etapa:tF;
+
+subplot(4,1,1);hold on;
+plot(t,x1,'g');title('\omega');
+
+subplot(4,1,2);hold on;
+plot(t,x4,'r');title('\theta');
+
+subplot(4,1,3);hold on;
+plot(t,x3,'b');title('Corriente');
+
+subplot(4,1,4);hold on;
+plot(t,acc,'k');title('Accion de control del PID');
+
+xlabel('Tiempo [Seg.]');
+
+
+
+function [X]=modmotor(t_etapa, xant, accion)
+%Empleo los valores de mi motor calculado
+Laa=523.8e-6 ; J=3.963e-6 ; Ra=104  ; B=0 ; Ki=16.52  ; Km=(1/16.52);
+Va=accion;
+h=1e-7;
+
+TL = 30e-4;
+
+omega= xant(1);
+wp= xant(2);
+ia=xant(3);
+tita=xant(4);
+for ii=1:t_etapa/h
+wpp =(-wp*(Ra*J+Laa*B)-omega*(Ra*B+Ki*Km)+Va*Ki)/(J*Laa);
+iap=((-Ra*ia)-(Km*omega)+(Va))/Laa;
+wp=wp+h*wpp;
+wp=wp-(1/J)*TL;
+ia=ia+(iap*h);
+omega = omega + h*wp;
+tita=tita+(h*omega);
+end
+X=[omega,wp,ia,tita];
+end
